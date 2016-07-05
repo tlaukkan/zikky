@@ -1,9 +1,10 @@
 group 'org.bubblecloud.zikky'
 version '1.0.0-SNAPSHOT'
 
+configurations.all { resolutionStrategy.cacheChangingModulesFor 0, "seconds" }
+
 buildscript {
     ext.kotlin_version = '1.0.3'
-    ext.zigbee4java_version = '3.0.0'
 
     repositories {
         mavenCentral()
@@ -16,11 +17,13 @@ buildscript {
 apply plugin: 'kotlin'
 
 repositories {
+    mavenLocal()
     mavenCentral()
     jcenter()
 }
 
 dependencies {
     compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
-    compile "org.bubblecloud.zigbee4java:zigbee-gateway-client:$zigbee4java_version"
+    compile "org.bubblecloud.zigbee4java:zigbee-common:3.0.1-SNAPSHOT"
+    compile "org.bubblecloud.zigbee4java:zigbee-gateway-client:3.0.1-SNAPSHOT"
 }
