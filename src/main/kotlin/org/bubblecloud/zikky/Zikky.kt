@@ -5,6 +5,7 @@ import org.bubblecloud.zigbee.v3.ZigBeeGroup
 import org.bubblecloud.zigbee.v3.zcl.protocol.ZclClusterType
 import org.bubblecloud.zigbee.v3.zcl.protocol.command.general.ReportAttributesCommand
 import org.bubblecloud.zigbee.v3.zcl.protocol.command.ias.zone.ZoneStatusChangeNotificationCommand
+import kotlin.concurrent.fixedRateTimer
 
 fun main(args : Array<String>) {
     println("Zikky startup...")
@@ -40,6 +41,10 @@ fun main(args : Array<String>) {
         println()
     }
 
+    var occupied = false
+    var lighting = false
+    var lastStateChangeTimeMillis = System.currentTimeMillis()
+
     api.addCommandListener {
         if (it is ZoneStatusChangeNotificationCommand) {
             val command: ZoneStatusChangeNotificationCommand = it
@@ -48,27 +53,31 @@ fun main(args : Array<String>) {
             val alarm1 = command.zoneStatus and alarm1Mask > 0
             val alarm2 = command.zoneStatus and alarm2Mask > 0
             println("Zone status alarm 1: $alarm1 alarm 2: $alarm2")
-        }
 
-        if (it is ReportAttributesCommand) {
-            val command: ReportAttributesCommand = it
-            if (command.clusterId == ZclClusterType.OCCUPANCY_SENSING.id) {
-                for (report in command.reports) {
-                    println("Occupancy and sensing reports: ${report.attributeIdentifier} = ${report.attributeValue}")
-
-                    if (report.attributeIdentifier == 0) {
-                        if (report.attributeValue == 1) {
-                            api.on(lamps)
-                        } else {
-                            api.off(lamps)
-                        }
-                    }
-
-                }
-            }
-
+            occupied = alarm1 || alarm2
+            lastStateChangeTimeMillis = System.currentTimeMillis()
         }
     }
+
+    fixedRateTimer("light-control", true, 0, 1000, {
+        if (occupied != lighting) {
+            if (occupied) {
+                api.on(lamps)
+                lighting = true
+                lastStateChangeTimeMillis = System.currentTimeMillis()
+                println("Occupied, switched lamps on.")
+            } else {
+                if (System.currentTimeMillis() - lastStateChangeTimeMillis > 15000) {
+                    api.off(lamps)
+                    lighting = false
+                    lastStateChangeTimeMillis = System.currentTimeMillis()
+                    println("Unoccupied, switched lamps off.")
+                } else {
+                    println("Unoccupied, waiting to switch lamps off.")
+                }
+            }
+        }
+    })
 
 }
 
